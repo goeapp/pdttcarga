@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Capataz — Carga de Avance (proto)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --ink: #0f172a;
+    --ink-soft: #64748b;
+    --line: #e2e8f0;
+    --orange: #f97316;
+    --orange-dark: #ea580c;
+    --orange-soft: #ffedd5;
+    --green: #16a34a;
+    --radius: 16px;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter', system-ui, sans-serif;
+    display:flex; justify-content:center;
+    min-height:100vh;
+  }
+  .phone{
+    width:100%; max-width:420px; min-height:100vh;
+    background:var(--bg);
+    display:flex; flex-direction:column;
+    padding:16px 16px 20px;
+  }
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  header .tag{
+    font-size:11px; font-weight:700; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--ink-soft);
+  }
+  header h1{
+    font-size:17px; font-weight:800; margin:2px 0 0;
+  }
+  .proto-pill{
+    font-size:10px; font-weight:700; color:var(--orange-dark);
+    background:var(--orange-soft); padding:4px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+
+  /* Selector Capataz */
+  .field-label{
+    font-size:12px; font-weight:700; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:.04em;
+    margin:0 0 6px 2px;
+  }
+  select.capataz-select{
+    width:100%; padding:16px 14px; font-size:16px; font-weight:600;
+    font-family:inherit; color:var(--ink);
+    background:var(--card) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 16px center;
+    border:2px solid var(--line); border-radius:var(--radius);
+    appearance:none; margin-bottom:16px;
+  }
+  select.capataz-select:focus{ outline:none; border-color:var(--orange); }
+
+  /* IWP grid */
+  .iwp-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+    margin-bottom:16px;
+  }
+  .iwp-btn{
+    background:var(--card); border:2px solid var(--line); border-radius:14px;
+    padding:14px 10px; text-align:left; cursor:pointer;
+    min-height:64px; display:flex; flex-direction:column; justify-content:center;
+    gap:2px; transition:border-color .12s, background .12s;
+  }
+  .iwp-btn .code{ font-size:11px; font-weight:700; color:var(--ink-soft); }
+  .iwp-btn .name{ font-size:14px; font-weight:700; color:var(--ink); line-height:1.2; }
+  .iwp-btn.active{
+    border-color:var(--orange); background:var(--orange-soft);
+  }
+  .iwp-btn.active .code{ color:var(--orange-dark); }
+  .iwp-btn.empty{
+    border-style:dashed; border-color:#cbd5e1; background:transparent;
+    cursor:not-allowed; align-items:center; justify-content:center;
+  }
+  .iwp-btn.empty .code{ display:none; }
+  .iwp-btn.empty .name{ color:#cbd5e1; font-weight:600; }
+
+  /* Cantidad / HH */
+  .inputs-row{
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+    margin-bottom:12px;
+  }
+  .input-box{
+    background:var(--card); border:2px solid var(--line); border-radius:14px;
+    padding:10px 12px; cursor:pointer;
+  }
+  .input-box .label{
+    font-size:11px; font-weight:700; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px;
+  }
+  .input-box .value{
+    font-size:28px; font-weight:800; color:var(--ink); min-height:34px;
+    font-variant-numeric:tabular-nums;
+  }
+  .input-box.focused{ border-color:var(--orange); background:var(--orange-soft); }
+  .input-box.focused .label{ color:var(--orange-dark); }
+
+  /* Keypad */
+  .keypad{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
+    margin-bottom:16px;
+  }
+  .key{
+    background:var(--card); border:2px solid var(--line); border-radius:14px;
+    font-size:22px; font-weight:700; color:var(--ink);
+    padding:16px 0; text-align:center; cursor:pointer;
+    user-select:none;
+  }
+  .key:active{ background:var(--orange-soft); border-color:var(--orange); }
+  .key.func{ font-size:14px; font-weight:700; color:var(--ink-soft); }
+
+  .spacer{ flex:1; }
+
+  .guardar-btn{
+    width:100%; padding:18px; font-size:17px; font-weight:800;
+    color:#fff; background:var(--ink-soft); border:none; border-radius:var(--radius);
+    cursor:not-allowed; letter-spacing:.02em;
+    transition:background .15s;
+  }
+  .guardar-btn.ready{ background:var(--orange); cursor:pointer; }
+  .guardar-btn.ready:active{ background:var(--orange-dark); }
+
+  .toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:#fff; padding:14px 20px; border-radius:12px;
+    font-size:14px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,.25);
+    opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
+    display:flex; align-items:center; gap:8px; max-width:340px; z-index:10;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast .dot{ width:8px; height:8px; border-radius:50%; background:var(--green); flex:none; }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <header>
+    <div>
+      <div class="tag">PdTT · Capataz</div>
+      <h1>Carga de Avance</h1>
+    </div>
+    <div class="proto-pill">Proto</div>
+  </header>
+
+  <div class="field-label">Capataz</div>
+  <select class="capataz-select" id="capatazSelect">
+    <option value="">Seleccioná capataz…</option>
+  </select>
+
+  <div class="field-label">Actividad (IWP)</div>
+  <div class="iwp-grid" id="iwpGrid"></div>
+
+  <div class="inputs-row">
+    <div class="input-box" id="boxCantidad" data-field="cantidad">
+      <div class="label">Cantidad</div>
+      <div class="value" id="valCantidad">0</div>
+    </div>
+    <div class="input-box" id="boxHH" data-field="hh">
+      <div class="label">HH</div>
+      <div class="value" id="valHH">0</div>
+    </div>
+  </div>
+
+  <div class="keypad" id="keypad">
+    <div class="key" data-k="1">1</div>
+    <div class="key" data-k="2">2</div>
+    <div class="key" data-k="3">3</div>
+    <div class="key" data-k="4">4</div>
+    <div class="key" data-k="5">5</div>
+    <div class="key" data-k="6">6</div>
+    <div class="key" data-k="7">7</div>
+    <div class="key" data-k="8">8</div>
+    <div class="key" data-k="9">9</div>
+    <div class="key func" data-k="C">Borrar todo</div>
+    <div class="key" data-k="0">0</div>
+    <div class="key func" data-k="back">⌫</div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <button class="guardar-btn" id="guardarBtn">Guardar</button>
+</div>
+
+<div class="toast" id="toast"><span class="dot"></span><span id="toastText"></span></div>
+
+<script>
+// ---- Datos de ejemplo (hardcodeados para la demo, de UO3333_pda_carga.xml) ----
+const DATA = [
+  {capataz:"Capataz Cañeria A", iwp:111, nombre:"M1 - Soldaduras", tipo:"Cañeria"},
+  {capataz:"Capataz Cañeria B", iwp:112, nombre:"M2 - Soldaduras", tipo:"Cañeria"},
+  {capataz:"Capataz Cañeria A", iwp:113, nombre:"M3 - Soldaduras", tipo:"Cañeria"},
+  {capataz:"Capataz Cañeria B", iwp:114, nombre:"M4 - Soldaduras", tipo:"Cañeria"},
+  {capataz:"Capataz Cañeria A", iwp:115, nombre:"M5 - Soldaduras", tipo:"Cañeria"},
+  {capataz:"Capataz Cañeria B", iwp:116, nombre:"M6 - Soldaduras", tipo:"Cañeria"},
+  {capataz:"Capataz Cañeria A", iwp:117, nombre:"M7 - Soldaduras", tipo:"Cañeria"},
+  {capataz:"Capataz Mecanica", iwp:121, nombre:"M1 - Montaje 1", tipo:"Mecanica"},
+  {capataz:"Capataz Mecanica", iwp:122, nombre:"M2 - Montaje 2", tipo:"Mecanica"},
+  {capataz:"Capatas Electricidad", iwp:131, nombre:"M1 - Ele 1", tipo:"Electricidad"},
+  {capataz:"Capatas Electricidad", iwp:132, nombre:"M2 - Ele 2", tipo:"Electricidad"},
+];
+
+const state = {
+  capataz: "",
+  iwp: null,
+  cantidad: "",
+  hh: "",
+  activeField: "cantidad"
+};
+
+const MAX_SLOTS = 4;
+
+const capatazSelect = document.getElementById('capatazSelect');
+const iwpGrid = document.getElementById('iwpGrid');
+const boxCantidad = document.getElementById('boxCantidad');
+const boxHH = document.getElementById('boxHH');
+const valCantidad = document.getElementById('valCantidad');
+const valHH = document.getElementById('valHH');
+const guardarBtn = document.getElementById('guardarBtn');
+const toast = document.getElementById('toast');
+const toastText = document.getElementById('toastText');
+
+// Poblar selector de capataces (únicos, en orden de aparición)
+const capataces = [...new Set(DATA.map(d => d.capataz))];
+capataces.forEach(c => {
+  const opt = document.createElement('option');
+  opt.value = c; opt.textContent = c;
+  capatazSelect.appendChild(opt);
+});
+
+function renderIWP(){
+  iwpGrid.innerHTML = '';
+  const items = state.capataz
+    ? DATA.filter(d => d.capataz === state.capataz).slice(0, MAX_SLOTS)
+    : [];
+
+  for(let i = 0; i < MAX_SLOTS; i++){
+    const item = items[i];
+    const btn = document.createElement('div');
+
+    if(!item){
+      btn.className = 'iwp-btn empty';
+      btn.innerHTML = `<div class="name">—</div>`;
+    } else {
+      btn.className = 'iwp-btn' + (state.iwp === item.iwp ? ' active' : '');
+      btn.innerHTML = `<div class="code">IWP ${item.iwp}</div><div class="name">${item.nombre}</div>`;
+      btn.addEventListener('click', () => {
+        state.iwp = item.iwp;
+        renderIWP();
+        updateGuardar();
+      });
+    }
+    iwpGrid.appendChild(btn);
+  }
+}
+
+capatazSelect.addEventListener('change', (e) => {
+  state.capataz = e.target.value;
+  state.iwp = null;
+  renderIWP();
+  updateGuardar();
+});
+
+function setActiveField(field){
+  state.activeField = field;
+  boxCantidad.classList.toggle('focused', field === 'cantidad');
+  boxHH.classList.toggle('focused', field === 'hh');
+}
+boxCantidad.addEventListener('click', () => setActiveField('cantidad'));
+boxHH.addEventListener('click', () => setActiveField('hh'));
+setActiveField('cantidad');
+
+document.getElementById('keypad').addEventListener('click', (e) => {
+  const key = e.target.closest('.key');
+  if(!key) return;
+  const k = key.dataset.k;
+  let current = state[state.activeField];
+
+  if(k === 'C'){
+    current = '';
+  } else if(k === 'back'){
+    current = current.slice(0, -1);
+  } else {
+    if(current.length < 5) current += k;
+  }
+  state[state.activeField] = current;
+  valCantidad.textContent = state.cantidad || '0';
+  valHH.textContent = state.hh || '0';
+  updateGuardar();
+});
+
+function updateGuardar(){
+  const ready = state.capataz && state.iwp !== null &&
+                Number(state.cantidad) > 0 && Number(state.hh) > 0;
+  guardarBtn.classList.toggle('ready', ready);
+}
+
+guardarBtn.addEventListener('click', () => {
+  if(!guardarBtn.classList.contains('ready')) return;
+  const iwpInfo = DATA.find(d => d.iwp === state.iwp);
+  toastText.textContent = `IWP ${state.iwp} — Cant. ${state.cantidad} — HH ${state.hh} cargado`;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2200);
+
+  // Reset IWP/cantidad/HH, mantiene el capataz seleccionado
+  state.iwp = null;
+  state.cantidad = '';
+  state.hh = '';
+  valCantidad.textContent = '0';
+  valHH.textContent = '0';
+  renderIWP();
+  updateGuardar();
+});
+
+// Render inicial: muestra los 4 slots vacíos/deshabilitados antes de elegir capataz
+renderIWP();
+updateGuardar();
+</script>
+</body>
+</html>

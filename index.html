@@ -23,18 +23,19 @@
     --error-ink: #b91c1c;
     --check-blue: #34b7f1;
   }
+  html, body{ height:100%; margin:0; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body{
     margin:0; background:#0b141a; color:var(--ink);
     font-family:'Inter', system-ui, sans-serif;
     display:flex; justify-content:center;
-    min-height:100vh;
+    height:100vh; overflow:hidden;
   }
   .phone{
-    width:100%; max-width:420px; min-height:100vh;
+    width:100%; max-width:420px; height:100vh;
     background:var(--wallpaper);
     display:flex; flex-direction:column;
-    position:relative;
+    position:relative; overflow:hidden;
   }
 
   /* Header estilo WhatsApp */
@@ -99,9 +100,9 @@
     background:#fff7ed; border:1.5px solid #fdba74; border-radius:10px;
     padding:10px 12px; margin-top:4px; font-size:13.5px;
   }
-  .resumen-box .row{ display:flex; justify-content:space-between; padding:2px 0; }
-  .resumen-box .row b{ color:var(--ink); }
-  .resumen-box .row span:first-child{ color:var(--ink-soft); font-weight:600; }
+  .resumen-box .row{ display:flex; justify-content:space-between; gap:14px; padding:2px 0; }
+  .resumen-box .row b{ color:var(--ink); text-align:right; }
+  .resumen-box .row span:first-child{ color:var(--ink-soft); font-weight:600; flex:0 0 auto; }
   .resumen-actions{ display:flex; gap:8px; margin-top:8px; }
   .resumen-actions button{
     flex:1; border:none; border-radius:8px; padding:10px 0;
@@ -202,7 +203,13 @@ function now(){
 }
 
 function scrollBottom(){
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  // Doble rAF: espera a que el navegador termine el layout (burbujas largas,
+  // tarjeta de resumen, botones) antes de medir scrollHeight real.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    });
+  });
 }
 
 function addBotBubble(text, {error=false}={}){

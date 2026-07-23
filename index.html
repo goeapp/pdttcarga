@@ -3,201 +3,175 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Capataz — Carga de Avance (proto)</title>
+<title>P-Chat — PdTT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #f1f5f9;
-    --card: #ffffff;
+    --header: #ea580c;      /* naranja oscuro PdTT, reemplaza verde WhatsApp #075E54 */
+    --header-sub: #fdba8c;
+    --wallpaper: #ece5dd;   /* wallpaper clásico WhatsApp, se mantiene neutro */
+    --out-bubble: #ffedd5;  /* naranja suave PdTT, reemplaza verde #DCF8C6 */
+    --out-tail: #ffedd5;
+    --in-bubble: #ffffff;
     --ink: #0f172a;
     --ink-soft: #64748b;
-    --line: #e2e8f0;
     --orange: #f97316;
     --orange-dark: #ea580c;
-    --orange-soft: #ffedd5;
-    --green: #16a34a;
-    --radius: 16px;
+    --error-bg: #fef2f2;
+    --error-border: #fecaca;
+    --error-ink: #b91c1c;
+    --check-blue: #34b7f1;
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body{
-    margin:0; background:var(--bg); color:var(--ink);
+    margin:0; background:#0b141a; color:var(--ink);
     font-family:'Inter', system-ui, sans-serif;
     display:flex; justify-content:center;
     min-height:100vh;
   }
   .phone{
     width:100%; max-width:420px; min-height:100vh;
-    background:var(--bg);
+    background:var(--wallpaper);
     display:flex; flex-direction:column;
-    padding:16px 16px 20px;
-  }
-  header{
-    display:flex; align-items:center; justify-content:space-between;
-    margin-bottom:14px;
-  }
-  header .tag{
-    font-size:11px; font-weight:700; letter-spacing:.06em;
-    text-transform:uppercase; color:var(--ink-soft);
-  }
-  header h1{
-    font-size:17px; font-weight:800; margin:2px 0 0;
-  }
-  .proto-pill{
-    font-size:10px; font-weight:700; color:var(--orange-dark);
-    background:var(--orange-soft); padding:4px 9px; border-radius:999px;
-    text-transform:uppercase; letter-spacing:.04em;
+    position:relative;
   }
 
-  /* Selector Capataz */
-  .field-label{
-    font-size:12px; font-weight:700; color:var(--ink-soft);
-    text-transform:uppercase; letter-spacing:.04em;
-    margin:0 0 6px 2px;
+  /* Header estilo WhatsApp */
+  .chat-header{
+    background:var(--header); color:#fff;
+    padding:14px 14px; display:flex; align-items:center; gap:12px;
+    box-shadow:0 1px 3px rgba(0,0,0,.2);
+    position:sticky; top:0; z-index:5;
   }
-  select.capataz-select{
-    width:100%; padding:16px 14px; font-size:16px; font-weight:600;
-    font-family:inherit; color:var(--ink);
-    background:var(--card) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 16px center;
-    border:2px solid var(--line); border-radius:var(--radius);
-    appearance:none; margin-bottom:16px;
+  .chat-header .back{ font-size:20px; opacity:.9; }
+  .chat-header .avatar{
+    width:38px; height:38px; border-radius:50%;
+    background:var(--header-sub); display:flex; align-items:center; justify-content:center;
+    font-weight:800; color:var(--header); font-size:15px; flex:none;
   }
-  select.capataz-select:focus{ outline:none; border-color:var(--orange); }
+  .chat-header .info{ flex:1; min-width:0; }
+  .chat-header .name{ font-size:15px; font-weight:700; }
+  .chat-header .status{ font-size:12px; opacity:.85; margin-top:1px; }
+  .chat-header .proto-pill{
+    font-size:9px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+    background:rgba(255,255,255,.2); padding:3px 8px; border-radius:999px;
+  }
 
-  /* IWP grid */
-  .iwp-grid{
-    display:grid; grid-template-columns:1fr 1fr; gap:10px;
-    margin-bottom:16px;
+  /* Área de mensajes */
+  .messages{
+    flex:1; overflow-y:auto; padding:14px 10px 10px;
+    display:flex; flex-direction:column; gap:2px;
   }
-  .iwp-btn{
-    background:var(--card); border:2px solid var(--line); border-radius:14px;
-    padding:14px 10px; text-align:left; cursor:pointer;
-    min-height:64px; display:flex; flex-direction:column; justify-content:center;
-    gap:2px; transition:border-color .12s, background .12s;
-  }
-  .iwp-btn .code{ font-size:11px; font-weight:700; color:var(--ink-soft); }
-  .iwp-btn .name{ font-size:14px; font-weight:700; color:var(--ink); line-height:1.2; }
-  .iwp-btn.active{
-    border-color:var(--orange); background:var(--orange-soft);
-  }
-  .iwp-btn.active .code{ color:var(--orange-dark); }
-  .iwp-btn.empty{
-    border-style:dashed; border-color:#cbd5e1; background:transparent;
-    cursor:not-allowed; align-items:center; justify-content:center;
-  }
-  .iwp-btn.empty .code{ display:none; }
-  .iwp-btn.empty .name{ color:#cbd5e1; font-weight:600; }
+  .msg-row{ display:flex; margin:4px 0; }
+  .msg-row.bot{ justify-content:flex-start; }
+  .msg-row.user{ justify-content:flex-end; }
 
-  /* Cantidad / HH */
-  .inputs-row{
-    display:grid; grid-template-columns:1fr 1fr; gap:10px;
-    margin-bottom:12px;
+  .bubble{
+    max-width:78%; padding:8px 10px 6px; border-radius:9px;
+    font-size:14.5px; line-height:1.35; position:relative;
+    box-shadow:0 1px 1px rgba(0,0,0,.08);
   }
-  .input-box{
-    background:var(--card); border:2px solid var(--line); border-radius:14px;
-    padding:10px 12px; cursor:pointer;
+  .msg-row.bot .bubble{ background:var(--in-bubble); border-top-left-radius:2px; }
+  .msg-row.user .bubble{ background:var(--out-bubble); border-top-right-radius:2px; }
+  .bubble .txt{ white-space:pre-line; }
+  .bubble .meta{
+    display:flex; justify-content:flex-end; align-items:center; gap:3px;
+    margin-top:3px; font-size:10.5px; color:var(--ink-soft); opacity:.75;
   }
-  .input-box .label{
-    font-size:11px; font-weight:700; color:var(--ink-soft);
-    text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px;
-  }
-  .input-box .value{
-    font-size:28px; font-weight:800; color:var(--ink); min-height:34px;
-    font-variant-numeric:tabular-nums;
-  }
-  .input-box.focused{ border-color:var(--orange); background:var(--orange-soft); }
-  .input-box.focused .label{ color:var(--orange-dark); }
+  .bubble.error{ background:var(--error-bg); border:1px solid var(--error-border); color:var(--error-ink); }
+  .bubble.error .meta{ color:var(--error-ink); opacity:.6; }
+  .check{ color:var(--check-blue); font-weight:700; }
 
-  /* Keypad */
-  .keypad{
-    display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
-    margin-bottom:16px;
+  /* Botones quick-reply agrupados bajo el mensaje del bot */
+  .qr-wrap{ display:flex; flex-direction:column; gap:6px; margin:6px 0 10px 2px; max-width:82%; }
+  .qr-btn{
+    background:#fff; border:1.5px solid var(--orange); color:var(--orange-dark);
+    font-family:inherit; font-size:14px; font-weight:700;
+    padding:10px 14px; border-radius:20px; text-align:left; cursor:pointer;
+    box-shadow:0 1px 2px rgba(0,0,0,.06);
   }
-  .key{
-    background:var(--card); border:2px solid var(--line); border-radius:14px;
-    font-size:22px; font-weight:700; color:var(--ink);
-    padding:16px 0; text-align:center; cursor:pointer;
-    user-select:none;
-  }
-  .key:active{ background:var(--orange-soft); border-color:var(--orange); }
-  .key.func{ font-size:14px; font-weight:700; color:var(--ink-soft); }
+  .qr-btn:active{ background:var(--orange); color:#fff; }
+  .qr-btn .sub{ display:block; font-size:11px; font-weight:600; color:var(--ink-soft); margin-top:1px; }
+  .qr-btn:active .sub{ color:#ffedd5; }
 
-  .spacer{ flex:1; }
-
-  .guardar-btn{
-    width:100%; padding:18px; font-size:17px; font-weight:800;
-    color:#fff; background:var(--ink-soft); border:none; border-radius:var(--radius);
-    cursor:not-allowed; letter-spacing:.02em;
-    transition:background .15s;
+  .resumen-box{
+    background:#fff7ed; border:1.5px solid #fdba74; border-radius:10px;
+    padding:10px 12px; margin-top:4px; font-size:13.5px;
   }
-  .guardar-btn.ready{ background:var(--orange); cursor:pointer; }
-  .guardar-btn.ready:active{ background:var(--orange-dark); }
-
-  .toast{
-    position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
-    background:var(--ink); color:#fff; padding:14px 20px; border-radius:12px;
-    font-size:14px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,.25);
-    opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
-    display:flex; align-items:center; gap:8px; max-width:340px; z-index:10;
+  .resumen-box .row{ display:flex; justify-content:space-between; padding:2px 0; }
+  .resumen-box .row b{ color:var(--ink); }
+  .resumen-box .row span:first-child{ color:var(--ink-soft); font-weight:600; }
+  .resumen-actions{ display:flex; gap:8px; margin-top:8px; }
+  .resumen-actions button{
+    flex:1; border:none; border-radius:8px; padding:10px 0;
+    font-family:inherit; font-weight:800; font-size:13.5px; cursor:pointer;
   }
-  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-  .toast .dot{ width:8px; height:8px; border-radius:50%; background:var(--green); flex:none; }
+  .btn-enviar{ background:var(--orange); color:#fff; }
+  .btn-enviar:active{ background:var(--orange-dark); }
+  .btn-nuevo{ background:#e2e8f0; color:var(--ink-soft); }
+  .btn-nuevo:active{ background:#cbd5e1; }
+
+  .typing{ display:flex; gap:3px; padding:10px 12px; }
+  .typing span{
+    width:6px; height:6px; border-radius:50%; background:#a3a3a3;
+    animation:blink 1.1s infinite;
+  }
+  .typing span:nth-child(2){ animation-delay:.15s; }
+  .typing span:nth-child(3){ animation-delay:.3s; }
+  @keyframes blink{ 0%,60%,100%{opacity:.3;} 30%{opacity:1;} }
+
+  /* Input bar estilo WhatsApp */
+  .input-bar{
+    display:flex; align-items:center; gap:8px;
+    padding:8px 10px; background:#f0f0f0;
+    border-top:1px solid #ddd;
+  }
+  .input-pill{
+    flex:1; background:#fff; border-radius:22px; padding:9px 14px;
+    display:flex; align-items:center;
+  }
+  .input-pill input{
+    border:none; outline:none; width:100%; font-family:inherit;
+    font-size:15px; background:transparent; color:var(--ink);
+  }
+  .input-pill input::placeholder{ color:#9ca3af; }
+  .send-btn{
+    width:42px; height:42px; border-radius:50%; background:var(--orange);
+    border:none; color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex:none;
+  }
+  .send-btn:active{ background:var(--orange-dark); }
+  .send-btn[disabled]{ background:#cbd5e1; cursor:not-allowed; }
+  .input-bar.hidden{ visibility:hidden; pointer-events:none; }
 </style>
 </head>
 <body>
 <div class="phone">
 
-  <header>
-    <div>
-      <div class="tag">PdTT · Capataz</div>
-      <h1>Carga de Avance</h1>
+  <div class="chat-header">
+    <div class="back">‹</div>
+    <div class="avatar">PT</div>
+    <div class="info">
+      <div class="name">P-Chat · PdTT</div>
+      <div class="status">carga de avance</div>
     </div>
     <div class="proto-pill">Proto</div>
-  </header>
-
-  <div class="field-label">Capataz</div>
-  <select class="capataz-select" id="capatazSelect">
-    <option value="">Seleccioná capataz…</option>
-  </select>
-
-  <div class="field-label">Actividad (IWP)</div>
-  <div class="iwp-grid" id="iwpGrid"></div>
-
-  <div class="inputs-row">
-    <div class="input-box" id="boxCantidad" data-field="cantidad">
-      <div class="label">Cantidad</div>
-      <div class="value" id="valCantidad">0</div>
-    </div>
-    <div class="input-box" id="boxHH" data-field="hh">
-      <div class="label">HH</div>
-      <div class="value" id="valHH">0</div>
-    </div>
   </div>
 
-  <div class="keypad" id="keypad">
-    <div class="key" data-k="1">1</div>
-    <div class="key" data-k="2">2</div>
-    <div class="key" data-k="3">3</div>
-    <div class="key" data-k="4">4</div>
-    <div class="key" data-k="5">5</div>
-    <div class="key" data-k="6">6</div>
-    <div class="key" data-k="7">7</div>
-    <div class="key" data-k="8">8</div>
-    <div class="key" data-k="9">9</div>
-    <div class="key func" data-k="C">Borrar todo</div>
-    <div class="key" data-k="0">0</div>
-    <div class="key func" data-k="back">⌫</div>
+  <div class="messages" id="messages"></div>
+
+  <div class="input-bar hidden" id="inputBar">
+    <div class="input-pill">
+      <input type="text" id="numInput" inputmode="numeric" pattern="[0-9]*" placeholder="Escribí un número…">
+    </div>
+    <button class="send-btn" id="sendBtn">➤</button>
   </div>
 
-  <div class="spacer"></div>
-
-  <button class="guardar-btn" id="guardarBtn">Guardar</button>
 </div>
 
-<div class="toast" id="toast"><span class="dot"></span><span id="toastText"></span></div>
-
 <script>
-// ---- Datos de ejemplo (hardcodeados para la demo, de UO3333_pda_carga.xml) ----
+// ---- Datos de ejemplo (mismo set del proto v0.1) ----
 const DATA = [
   {capataz:"Capataz Cañeria A", iwp:111, nombre:"M1 - Soldaduras", tipo:"Cañeria"},
   {capataz:"Capataz Cañeria B", iwp:112, nombre:"M2 - Soldaduras", tipo:"Cañeria"},
@@ -212,121 +186,225 @@ const DATA = [
   {capataz:"Capatas Electricidad", iwp:132, nombre:"M2 - Ele 2", tipo:"Electricidad"},
 ];
 
-const state = {
-  capataz: "",
-  iwp: null,
-  cantidad: "",
-  hh: "",
-  activeField: "cantidad"
-};
-
-const MAX_SLOTS = 4;
-
-const capatazSelect = document.getElementById('capatazSelect');
-const iwpGrid = document.getElementById('iwpGrid');
-const boxCantidad = document.getElementById('boxCantidad');
-const boxHH = document.getElementById('boxHH');
-const valCantidad = document.getElementById('valCantidad');
-const valHH = document.getElementById('valHH');
-const guardarBtn = document.getElementById('guardarBtn');
-const toast = document.getElementById('toast');
-const toastText = document.getElementById('toastText');
-
-// Poblar selector de capataces (únicos, en orden de aparición)
 const capataces = [...new Set(DATA.map(d => d.capataz))];
-capataces.forEach(c => {
-  const opt = document.createElement('option');
-  opt.value = c; opt.textContent = c;
-  capatazSelect.appendChild(opt);
-});
 
-function renderIWP(){
-  iwpGrid.innerHTML = '';
-  const items = state.capataz
-    ? DATA.filter(d => d.capataz === state.capataz).slice(0, MAX_SLOTS)
-    : [];
+const messagesEl = document.getElementById('messages');
+const inputBar = document.getElementById('inputBar');
+const numInput = document.getElementById('numInput');
+const sendBtn = document.getElementById('sendBtn');
 
-  for(let i = 0; i < MAX_SLOTS; i++){
-    const item = items[i];
+let state = 'ask_capataz';
+let ctx = { capataz:null, iwp:null, cantidad:null, personas:null };
+
+function now(){
+  const d = new Date();
+  return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+}
+
+function scrollBottom(){
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function addBotBubble(text, {error=false}={}){
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+  const bub = document.createElement('div');
+  bub.className = 'bubble' + (error ? ' error' : '');
+  bub.innerHTML = `<div class="txt"></div><div class="meta">${now()}</div>`;
+  bub.querySelector('.txt').textContent = text;
+  row.appendChild(bub);
+  messagesEl.appendChild(row);
+  scrollBottom();
+  return bub;
+}
+
+function addUserBubble(text){
+  const row = document.createElement('div');
+  row.className = 'msg-row user';
+  const bub = document.createElement('div');
+  bub.className = 'bubble';
+  bub.innerHTML = `<div class="txt"></div><div class="meta">${now()} <span class="check">✓✓</span></div>`;
+  bub.querySelector('.txt').textContent = text;
+  row.appendChild(bub);
+  messagesEl.appendChild(row);
+  scrollBottom();
+}
+
+function showTyping(cb, delay=450){
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+  row.innerHTML = `<div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  messagesEl.appendChild(row);
+  scrollBottom();
+  setTimeout(() => {
+    row.remove();
+    cb();
+  }, delay);
+}
+
+function addQuickReplies(options){
+  const wrap = document.createElement('div');
+  wrap.className = 'qr-wrap';
+  options.forEach(opt => {
     const btn = document.createElement('div');
-
-    if(!item){
-      btn.className = 'iwp-btn empty';
-      btn.innerHTML = `<div class="name">—</div>`;
-    } else {
-      btn.className = 'iwp-btn' + (state.iwp === item.iwp ? ' active' : '');
-      btn.innerHTML = `<div class="code">IWP ${item.iwp}</div><div class="name">${item.nombre}</div>`;
-      btn.addEventListener('click', () => {
-        state.iwp = item.iwp;
-        renderIWP();
-        updateGuardar();
-      });
-    }
-    iwpGrid.appendChild(btn);
-  }
+    btn.className = 'qr-btn';
+    btn.innerHTML = opt.sub
+      ? `${opt.label}<span class="sub">${opt.sub}</span>`
+      : opt.label;
+    btn.addEventListener('click', () => opt.onClick());
+    wrap.appendChild(btn);
+  });
+  messagesEl.appendChild(wrap);
+  scrollBottom();
 }
 
-capatazSelect.addEventListener('change', (e) => {
-  state.capataz = e.target.value;
-  state.iwp = null;
-  renderIWP();
-  updateGuardar();
-});
-
-function setActiveField(field){
-  state.activeField = field;
-  boxCantidad.classList.toggle('focused', field === 'cantidad');
-  boxHH.classList.toggle('focused', field === 'hh');
-}
-boxCantidad.addEventListener('click', () => setActiveField('cantidad'));
-boxHH.addEventListener('click', () => setActiveField('hh'));
-setActiveField('cantidad');
-
-document.getElementById('keypad').addEventListener('click', (e) => {
-  const key = e.target.closest('.key');
-  if(!key) return;
-  const k = key.dataset.k;
-  let current = state[state.activeField];
-
-  if(k === 'C'){
-    current = '';
-  } else if(k === 'back'){
-    current = current.slice(0, -1);
+function setInputMode(active, placeholder=''){
+  if(active){
+    inputBar.classList.remove('hidden');
+    numInput.value = '';
+    numInput.placeholder = placeholder;
+    sendBtn.removeAttribute('disabled');
+    setTimeout(() => numInput.focus(), 50);
   } else {
-    if(current.length < 5) current += k;
+    inputBar.classList.add('hidden');
   }
-  state[state.activeField] = current;
-  valCantidad.textContent = state.cantidad || '0';
-  valHH.textContent = state.hh || '0';
-  updateGuardar();
-});
-
-function updateGuardar(){
-  const ready = state.capataz && state.iwp !== null &&
-                Number(state.cantidad) > 0 && Number(state.hh) > 0;
-  guardarBtn.classList.toggle('ready', ready);
 }
 
-guardarBtn.addEventListener('click', () => {
-  if(!guardarBtn.classList.contains('ready')) return;
-  const iwpInfo = DATA.find(d => d.iwp === state.iwp);
-  toastText.textContent = `IWP ${state.iwp} — Cant. ${state.cantidad} — HH ${state.hh} cargado`;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2200);
+// ---- Flujo ----
+function startFlow(){
+  ctx = { capataz:null, iwp:null, cantidad:null, personas:null };
+  state = 'ask_capataz';
+  setInputMode(false);
+  showTyping(() => {
+    addBotBubble('¡Hola! 👋 ¿Quién sos?');
+    addQuickReplies(capataces.map(c => ({
+      label: c,
+      onClick: () => selectCapataz(c)
+    })));
+  }, 300);
+}
 
-  // Reset IWP/cantidad/HH, mantiene el capataz seleccionado
-  state.iwp = null;
-  state.cantidad = '';
-  state.hh = '';
-  valCantidad.textContent = '0';
-  valHH.textContent = '0';
-  renderIWP();
-  updateGuardar();
+function selectCapataz(c){
+  addUserBubble(c);
+  ctx.capataz = c;
+  state = 'ask_iwp';
+  showTyping(() => {
+    addBotBubble(`Dale. ¿Qué actividad cargás?`);
+    const items = DATA.filter(d => d.capataz === c);
+    addQuickReplies(items.map(it => ({
+      label: it.nombre,
+      sub: `IWP ${it.iwp} · ${it.tipo}`,
+      onClick: () => selectIWP(it)
+    })));
+  });
+}
+
+function selectIWP(item){
+  addUserBubble(`IWP ${item.iwp} — ${item.nombre}`);
+  ctx.iwp = item;
+  state = 'ask_cantidad';
+  showTyping(() => {
+    addBotBubble('¿Cantidad de trabajo realizado?');
+    setInputMode(true, 'Ej: 40');
+  });
+}
+
+function handleCantidad(raw){
+  const n = Number(raw);
+  if(raw.trim() === '' || isNaN(n) || n <= 0){
+    addUserBubble(raw || '(vacío)');
+    setInputMode(false);
+    showTyping(() => {
+      addBotBubble('Ese valor no es válido. Ingresá un número mayor a cero.', {error:true});
+      setInputMode(true, 'Ej: 40');
+    }, 350);
+    return;
+  }
+  addUserBubble(raw);
+  ctx.cantidad = n;
+  state = 'ask_personas';
+  setInputMode(false);
+  showTyping(() => {
+    addBotBubble('¿Cantidad de personas en la cuadrilla?');
+    setInputMode(true, 'Ej: 3');
+  });
+}
+
+function handlePersonas(raw){
+  const n = Number(raw);
+  if(raw.trim() === '' || isNaN(n) || n <= 0){
+    addUserBubble(raw || '(vacío)');
+    setInputMode(false);
+    showTyping(() => {
+      addBotBubble('Ese valor no es válido. Ingresá un número mayor a cero.', {error:true});
+      setInputMode(true, 'Ej: 3');
+    }, 350);
+    return;
+  }
+  addUserBubble(raw);
+  ctx.personas = n;
+  const hh = n * 8;
+  state = 'confirm';
+  setInputMode(false);
+  showTyping(() => showResumen(hh));
+}
+
+function showResumen(hh){
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+  const bub = document.createElement('div');
+  bub.className = 'bubble';
+  bub.style.maxWidth = '85%';
+  bub.innerHTML = `
+    <div class="txt">Este es el resumen:</div>
+    <div class="resumen-box">
+      <div class="row"><span>Capataz</span><b>${ctx.capataz}</b></div>
+      <div class="row"><span>IWP</span><b>${ctx.iwp.iwp} — ${ctx.iwp.nombre}</b></div>
+      <div class="row"><span>Cantidad</span><b>${ctx.cantidad}</b></div>
+      <div class="row"><span>Personas</span><b>${ctx.personas}</b></div>
+      <div class="row"><span>HH (personas × 8)</span><b>${hh}</b></div>
+      <div class="resumen-actions">
+        <button class="btn-nuevo">Nuevo</button>
+        <button class="btn-enviar">Enviar</button>
+      </div>
+    </div>
+    <div class="meta">${now()}</div>
+  `;
+  bub.querySelector('.btn-enviar').addEventListener('click', () => confirmarEnvio(hh));
+  bub.querySelector('.btn-nuevo').addEventListener('click', () => cancelarYNuevo());
+  row.appendChild(bub);
+  messagesEl.appendChild(row);
+  scrollBottom();
+}
+
+function confirmarEnvio(hh){
+  addUserBubble('Enviar ✔');
+  showTyping(() => {
+    addBotBubble(`✅ Carga guardada — IWP ${ctx.iwp.iwp}, Cant. ${ctx.cantidad}, HH ${hh}.`);
+    setTimeout(startFlow, 1400);
+  }, 350);
+}
+
+function cancelarYNuevo(){
+  addUserBubble('Nuevo');
+  showTyping(() => {
+    addBotBubble('Sin problema, empecemos de nuevo.');
+    setTimeout(startFlow, 900);
+  }, 300);
+}
+
+sendBtn.addEventListener('click', () => {
+  const val = numInput.value;
+  numInput.value = '';
+  if(state === 'ask_cantidad') handleCantidad(val);
+  else if(state === 'ask_personas') handlePersonas(val);
+});
+numInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') sendBtn.click();
 });
 
-// Render inicial: muestra los 4 slots vacíos/deshabilitados antes de elegir capataz
-renderIWP();
-updateGuardar();
+// Arranque
+startFlow();
 </script>
 </body>
 </html>

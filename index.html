@@ -8,10 +8,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --header: #ea580c;      /* naranja oscuro PdTT, reemplaza verde WhatsApp #075E54 */
+    --header: #ea580c;
     --header-sub: #fdba8c;
-    --wallpaper: #ece5dd;   /* wallpaper clásico WhatsApp, se mantiene neutro */
-    --out-bubble: #ffedd5;  /* naranja suave PdTT, reemplaza verde #DCF8C6 */
+    --wallpaper: #ece5dd;
+    --out-bubble: #ffedd5;
     --out-tail: #ffedd5;
     --in-bubble: #ffffff;
     --ink: #0f172a;
@@ -38,7 +38,6 @@
     position:relative; overflow:hidden;
   }
 
-  /* Header estilo WhatsApp */
   .chat-header{
     background:var(--header); color:#fff;
     padding:14px 14px; display:flex; align-items:center; gap:12px;
@@ -59,7 +58,6 @@
     background:rgba(255,255,255,.2); padding:3px 8px; border-radius:999px;
   }
 
-  /* Área de mensajes */
   .messages{
     flex:1; overflow-y:auto; padding:14px 10px 10px;
     display:flex; flex-direction:column; gap:2px;
@@ -84,7 +82,6 @@
   .bubble.error .meta{ color:var(--error-ink); opacity:.6; }
   .check{ color:var(--check-blue); font-weight:700; }
 
-  /* Botones quick-reply agrupados bajo el mensaje del bot */
   .qr-wrap{ display:flex; flex-direction:column; gap:6px; margin:6px 0 10px 2px; max-width:82%; }
   .qr-btn{
     background:#fff; border:1.5px solid var(--orange); color:var(--orange-dark);
@@ -122,7 +119,6 @@
   .typing span:nth-child(3){ animation-delay:.3s; }
   @keyframes blink{ 0%,60%,100%{opacity:.3;} 30%{opacity:1;} }
 
-  /* Input bar estilo WhatsApp */
   .input-bar{
     display:flex; align-items:center; gap:8px;
     padding:8px 10px; background:#f0f0f0;
@@ -135,8 +131,12 @@
   .input-pill input{
     border:none; outline:none; width:100%; font-family:inherit;
     font-size:15px; background:transparent; color:var(--ink);
+    letter-spacing: normal;
   }
-  .input-pill input::placeholder{ color:#9ca3af; }
+  .input-pill input.pin-field{
+    letter-spacing: 4px; font-weight:700;
+  }
+  .input-pill input::placeholder{ color:#9ca3af; letter-spacing:normal; font-weight:400; }
   .send-btn{
     width:42px; height:42px; border-radius:50%; background:var(--orange);
     border:none; color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center;
@@ -157,7 +157,7 @@
       <div class="name">P-Chat · PdTT</div>
       <div class="status">carga de avance</div>
     </div>
-    <div class="proto-pill">Proto</div>
+    <div class="proto-pill">v1.0</div>
   </div>
 
   <div class="messages" id="messages"></div>
@@ -172,30 +172,80 @@
 </div>
 
 <script>
-// ---- Datos de ejemplo (mismo set del proto v0.1) ----
-const DATA = [
-  {capataz:"Capataz Cañeria A", iwp:111, nombre:"M1 - Soldaduras", tipo:"Cañeria"},
-  {capataz:"Capataz Cañeria B", iwp:112, nombre:"M2 - Soldaduras", tipo:"Cañeria"},
-  {capataz:"Capataz Cañeria A", iwp:113, nombre:"M3 - Soldaduras", tipo:"Cañeria"},
-  {capataz:"Capataz Cañeria B", iwp:114, nombre:"M4 - Soldaduras", tipo:"Cañeria"},
-  {capataz:"Capataz Cañeria A", iwp:115, nombre:"M5 - Soldaduras", tipo:"Cañeria"},
-  {capataz:"Capataz Cañeria B", iwp:116, nombre:"M6 - Soldaduras", tipo:"Cañeria"},
-  {capataz:"Capataz Cañeria A", iwp:117, nombre:"M7 - Soldaduras", tipo:"Cañeria"},
-  {capataz:"Capataz Mecanica", iwp:121, nombre:"M1 - Montaje 1", tipo:"Mecanica"},
-  {capataz:"Capataz Mecanica", iwp:122, nombre:"M2 - Montaje 2", tipo:"Mecanica"},
-  {capataz:"Capatas Electricidad", iwp:131, nombre:"M1 - Ele 1", tipo:"Electricidad"},
-  {capataz:"Capatas Electricidad", iwp:132, nombre:"M2 - Ele 2", tipo:"Electricidad"},
-];
-
-const capataces = [...new Set(DATA.map(d => d.capataz))];
+// =============================================================================
+// P-Chat v1.0 — Config
+// =============================================================================
+// Pegar acá la URL de implementación del Web App de code_pchat_v1.0.gs
+const CONFIG = {
+  API_URL: 'PEGAR_ACA_LA_URL_DEL_WEB_APP_DE_GAS',
+  SESSION_KEY: 'pchat_session_v1',
+  SESSION_DIAS: 7
+};
 
 const messagesEl = document.getElementById('messages');
 const inputBar = document.getElementById('inputBar');
 const numInput = document.getElementById('numInput');
 const sendBtn = document.getElementById('sendBtn');
 
-let state = 'ask_capataz';
-let ctx = { capataz:null, iwp:null, cantidad:null, personas:null };
+// state posibles:
+// ask_pin, ask_pin_nuevo, ask_pin_nuevo_confirm, ask_cantidad, ask_personas, confirm
+let state = null;
+let ctx = {};       // email, nombre, obra, cuadrilla, iwp, cantidad, personas
+let pinNuevoTemp = null; // valor del primer tipeo al crear PIN propio, para comparar contra la confirmación
+
+// =============================================================================
+// Llamadas al backend
+// =============================================================================
+
+async function apiCall(action, params){
+  params = params || {};
+  try{
+    const res = await fetch(CONFIG.API_URL, {
+      method: 'POST',
+      // OJO: text/plain evita el preflight CORS que Apps Script no siempre maneja bien.
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ action: action }, params))
+    });
+    return await res.json();
+  }catch(err){
+    console.error('apiCall error', action, err);
+    return { ok:false, error: String(err) };
+  }
+}
+
+// =============================================================================
+// Sesión (localStorage)
+// =============================================================================
+
+function getSession(){
+  try{
+    const raw = localStorage.getItem(CONFIG.SESSION_KEY);
+    if(!raw) return null;
+    const s = JSON.parse(raw);
+    const venceMs = CONFIG.SESSION_DIAS * 24 * 60 * 60 * 1000;
+    if(Date.now() - s.ts > venceMs){
+      localStorage.removeItem(CONFIG.SESSION_KEY);
+      return null;
+    }
+    return s;
+  }catch(e){
+    return null;
+  }
+}
+
+function saveSession(){
+  localStorage.setItem(CONFIG.SESSION_KEY, JSON.stringify({
+    email: ctx.email,
+    nombre: ctx.nombre,
+    obra: ctx.obra,
+    cuadrilla: ctx.cuadrilla,
+    ts: Date.now()
+  }));
+}
+
+// =============================================================================
+// UI helpers (idénticos al proto v0.3)
+// =============================================================================
 
 function now(){
   const d = new Date();
@@ -203,8 +253,6 @@ function now(){
 }
 
 function scrollBottom(){
-  // Doble rAF: espera a que el navegador termine el layout (burbujas largas,
-  // tarjeta de resumen, botones) antes de medir scrollHeight real.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -265,11 +313,13 @@ function addQuickReplies(options){
   scrollBottom();
 }
 
-function setInputMode(active, placeholder=''){
+function setInputMode(active, placeholder='', {pin=false}={}){
   if(active){
     inputBar.classList.remove('hidden');
     numInput.value = '';
     numInput.placeholder = placeholder;
+    numInput.type = pin ? 'password' : 'text';
+    numInput.classList.toggle('pin-field', pin);
     sendBtn.removeAttribute('disabled');
     setTimeout(() => numInput.focus(), 50);
   } else {
@@ -277,33 +327,183 @@ function setInputMode(active, placeholder=''){
   }
 }
 
-// ---- Flujo ----
+// =============================================================================
+// Flujo — arranque / login
+// =============================================================================
+
 function startFlow(){
-  ctx = { capataz:null, iwp:null, cantidad:null, personas:null };
-  state = 'ask_capataz';
+  ctx = {};
+  pinNuevoTemp = null;
   setInputMode(false);
-  showTyping(() => {
+
+  const session = getSession();
+  if(session){
+    ctx.email = session.email;
+    ctx.nombre = session.nombre;
+    ctx.obra = session.obra;
+    ctx.cuadrilla = session.cuadrilla;
+    showTyping(() => {
+      addBotBubble(`Hola de nuevo, ${session.nombre.split(' ')[0]} 👋`);
+      loadTareasYPreguntar();
+    }, 300);
+    return;
+  }
+
+  showTyping(async () => {
     addBotBubble('¡Hola! 👋 ¿Quién sos?');
-    addQuickReplies(capataces.map(c => ({
-      label: c,
-      onClick: () => selectCapataz(c)
+    const res = await apiCall('listarUsuariosActivos');
+    if(!res.ok){
+      addBotBubble('No pude conectar con el Sheet. Reintentá en un momento.', {error:true});
+      return;
+    }
+    if(!res.usuarios.length){
+      addBotBubble('No encontré usuarios activos configurados.', {error:true});
+      return;
+    }
+    addQuickReplies(res.usuarios.map(u => ({
+      label: u.nombre,
+      onClick: () => selectUsuario(u)
     })));
   }, 300);
 }
 
-function selectCapataz(c){
-  addUserBubble(c);
-  ctx.capataz = c;
-  state = 'ask_iwp';
+function selectUsuario(u){
+  addUserBubble(u.nombre);
+  ctx.email = u.email;
+  ctx.nombreTemp = u.nombre;
+  state = 'ask_pin';
   showTyping(() => {
-    addBotBubble(`Dale. ¿Qué actividad cargás?`);
-    const items = DATA.filter(d => d.capataz === c);
-    addQuickReplies(items.map(it => ({
+    addBotBubble(`Ingresá tu PIN, ${u.nombre.split(' ')[0]}`);
+    setInputMode(true, 'PIN', {pin:true});
+  });
+}
+
+async function handlePin(raw){
+  addUserBubble(raw ? '•'.repeat(raw.length) : '(vacío)');
+  setInputMode(false);
+
+  if(raw.trim() === ''){
+    showTyping(() => {
+      addBotBubble('Ingresá tu PIN para continuar.', {error:true});
+      setInputMode(true, 'PIN', {pin:true});
+    }, 300);
+    return;
+  }
+
+  showTyping(async () => {
+    const res = await apiCall('validarPIN', { email: ctx.email, pin: raw });
+
+    if(res.ok){
+      ctx.nombre = res.nombre;
+      ctx.obra = res.obra;
+      ctx.cuadrilla = res.cuadrilla;
+
+      if(res.requiereCambio){
+        state = 'ask_pin_nuevo';
+        addBotBubble(`Es tu primer ingreso. Creá tu PIN propio.`);
+        setInputMode(true, 'Nuevo PIN', {pin:true});
+      }else{
+        saveSession();
+        loadTareasYPreguntar();
+      }
+      return;
+    }
+
+    // ok:false — distintos motivos
+    if(res.motivo === 'inactivo'){
+      addBotBubble('Tu usuario está dado de baja. Consultá con tu supervisor.', {error:true});
+      setTimeout(startFlow, 1800);
+    }else if(res.motivo === 'bloqueado'){
+      addBotBubble('Tu acceso está bloqueado por intentos fallidos. Consultá con tu supervisor.', {error:true});
+      setTimeout(startFlow, 1800);
+    }else if(res.motivo === 'bloqueado_ahora'){
+      addBotBubble('PIN incorrecto. Se alcanzó el límite de intentos — tu acceso quedó bloqueado. Consultá con tu supervisor.', {error:true});
+      setTimeout(startFlow, 2200);
+    }else if(res.motivo === 'no_encontrado'){
+      addBotBubble('No encontré tu usuario. Reintentá desde el principio.', {error:true});
+      setTimeout(startFlow, 1800);
+    }else{
+      // pin_incorrecto
+      addBotBubble(`PIN incorrecto. Te quedan ${res.restantes} intento(s).`, {error:true});
+      setInputMode(true, 'PIN', {pin:true});
+    }
+  }, 350);
+}
+
+async function handlePinNuevo(raw){
+  addUserBubble(raw ? '•'.repeat(raw.length) : '(vacío)');
+  setInputMode(false);
+
+  if(raw.trim() === '' || raw.trim().length < 4){
+    showTyping(() => {
+      addBotBubble('El PIN debe tener al menos 4 dígitos.', {error:true});
+      setInputMode(true, 'Nuevo PIN', {pin:true});
+    }, 300);
+    return;
+  }
+
+  pinNuevoTemp = raw.trim();
+  state = 'ask_pin_nuevo_confirm';
+  showTyping(() => {
+    addBotBubble('Repetí el mismo PIN para confirmar.');
+    setInputMode(true, 'Confirmá tu PIN', {pin:true});
+  }, 300);
+}
+
+async function handlePinNuevoConfirm(raw){
+  addUserBubble(raw ? '•'.repeat(raw.length) : '(vacío)');
+  setInputMode(false);
+
+  if(raw.trim() !== pinNuevoTemp){
+    pinNuevoTemp = null;
+    state = 'ask_pin_nuevo';
+    showTyping(() => {
+      addBotBubble('No coincide con el anterior. Empecemos de nuevo con el PIN.', {error:true});
+      setInputMode(true, 'Nuevo PIN', {pin:true});
+    }, 350);
+    return;
+  }
+
+  showTyping(async () => {
+    const res = await apiCall('crearPINPropio', { email: ctx.email, pinNuevo: pinNuevoTemp });
+    pinNuevoTemp = null;
+
+    if(!res.ok){
+      addBotBubble('No pude guardar tu PIN. Reintentá desde el principio.', {error:true});
+      setTimeout(startFlow, 1800);
+      return;
+    }
+
+    addBotBubble('Listo, PIN creado ✅');
+    saveSession();
+    loadTareasYPreguntar();
+  }, 350);
+}
+
+// =============================================================================
+// Flujo — tareas (lectura real desde Sheet)
+// =============================================================================
+
+function loadTareasYPreguntar(){
+  showTyping(async () => {
+    const res = await apiCall('obtenerTareas', { email: ctx.email });
+
+    if(!res.ok){
+      addBotBubble('No pude cargar tus tareas. Reintentá en un momento.', {error:true});
+      return;
+    }
+    if(!res.tareas.length){
+      addBotBubble('No encontré tareas asignadas para vos en el Sheet.', {error:true});
+      return;
+    }
+
+    addBotBubble('Dale. ¿Qué actividad cargás?');
+    addQuickReplies(res.tareas.map(it => ({
       label: it.nombre,
       sub: `IWP ${it.iwp} · ${it.tipo}`,
       onClick: () => selectIWP(it)
     })));
-  });
+  }, 300);
 }
 
 function selectIWP(item){
@@ -315,6 +515,10 @@ function selectIWP(item){
     setInputMode(true, 'Ej: 40');
   });
 }
+
+// =============================================================================
+// Flujo — cantidad / personas / resumen (sin cambios de lógica vs. proto v0.3)
+// =============================================================================
 
 function handleCantidad(raw){
   const n = Number(raw);
@@ -365,7 +569,8 @@ function showResumen(hh){
   bub.innerHTML = `
     <div class="txt">Este es el resumen:</div>
     <div class="resumen-box">
-      <div class="row"><span>Capataz</span><b>${ctx.capataz}</b></div>
+      <div class="row"><span>Capataz</span><b>${ctx.nombre}</b></div>
+      <div class="row"><span>Obra</span><b>${ctx.obra}</b></div>
       <div class="row"><span>IWP</span><b>${ctx.iwp.iwp} — ${ctx.iwp.nombre}</b></div>
       <div class="row"><span>Cantidad</span><b>${ctx.cantidad}</b></div>
       <div class="row"><span>Personas</span><b>${ctx.personas}</b></div>
@@ -387,8 +592,10 @@ function showResumen(hh){
 function confirmarEnvio(hh){
   addUserBubble('Enviar ✔');
   showTyping(() => {
-    addBotBubble(`✅ Carga guardada — IWP ${ctx.iwp.iwp}, Cant. ${ctx.cantidad}, HH ${hh}.`);
-    setTimeout(startFlow, 1400);
+    // NOTA: esta versión todavía NO guarda la carga en el Sheet — eso es la
+    // próxima etapa acordada (hoja Cargas_Avance). Por ahora solo confirma en pantalla.
+    addBotBubble(`✅ Carga registrada localmente — IWP ${ctx.iwp.iwp}, Cant. ${ctx.cantidad}, HH ${hh}.\n(El guardado real en el Sheet queda para la próxima etapa.)`);
+    setTimeout(startFlow, 1800);
   }, 350);
 }
 
@@ -400,10 +607,17 @@ function cancelarYNuevo(){
   }, 300);
 }
 
+// =============================================================================
+// Input bar — router según state
+// =============================================================================
+
 sendBtn.addEventListener('click', () => {
   const val = numInput.value;
   numInput.value = '';
-  if(state === 'ask_cantidad') handleCantidad(val);
+  if(state === 'ask_pin') handlePin(val);
+  else if(state === 'ask_pin_nuevo') handlePinNuevo(val);
+  else if(state === 'ask_pin_nuevo_confirm') handlePinNuevoConfirm(val);
+  else if(state === 'ask_cantidad') handleCantidad(val);
   else if(state === 'ask_personas') handlePersonas(val);
 });
 numInput.addEventListener('keydown', (e) => {

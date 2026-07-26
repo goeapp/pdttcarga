@@ -4,7 +4,7 @@
 const CACHE_NAME = 'pchat-v1.1';
 const ASSETS = [
   './',
-  './index_pchat_v1.1.html',
+  './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

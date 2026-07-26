@@ -2,7 +2,7 @@
   "name": "P-Chat — PdTT",
   "short_name": "P-Chat",
   "description": "Carga de avance por IWP, estilo chat",
-  "start_url": "./index_pchat_v1.1.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

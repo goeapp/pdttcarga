@@ -217,8 +217,22 @@
 <body>
 <div class="phone">
 
+  <!-- ============================= LOGIN ============================= -->
+  <div class="screen" id="screenLogin">
+    <div class="chat-header">
+      <div class="home-title" style="flex:1;">P-Chat</div>
+    </div>
+    <div class="messages" id="messagesLogin"></div>
+    <div class="input-bar hidden" id="inputBarLogin">
+      <div class="input-pill">
+        <input type="text" id="numInputLogin" inputmode="numeric" pattern="[0-9]*" placeholder="Escribí un número…">
+      </div>
+      <button class="send-btn" id="sendBtnLogin">➤</button>
+    </div>
+  </div>
+
   <!-- ============================= HOME ============================= -->
-  <div class="screen" id="screenHome">
+  <div class="screen hidden" id="screenHome">
     <div class="chat-header">
       <div class="home-title" style="flex:1;">P-Chat</div>
       <div class="dots" id="btnMenu">⋮</div>
@@ -250,7 +264,7 @@
         <div class="name">P-Chat · PdTT</div>
         <div class="status">carga de avance</div>
       </div>
-      <div class="version-pill">v1.2</div>
+      <div class="version-pill">v1.3</div>
     </div>
 
     <div class="messages" id="messages"></div>
@@ -271,7 +285,7 @@
         <div class="u-dato">Todavía no iniciaste sesión en ningún asistente.</div>
       </div>
       <hr>
-      <div class="m-version">Versión v1.2</div>
+      <div class="m-version">Versión v1.3</div>
       <button class="menu-btn" id="btnInstalar">Instalar app</button>
       <button class="menu-btn" id="btnActualizar">Actualizar</button>
       <button class="menu-btn danger hidden" id="btnCerrarSesion">Cerrar sesión</button>
@@ -283,7 +297,7 @@
 
 <script>
 // =============================================================================
-// P-Chat v1.1 — Config
+// P-Chat v1.3 — Config
 // =============================================================================
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycby7HEXqngCqGOGo7HinuWP8zAE2NBImFHaYvhrWzYXmfg0WOmzMau4HvFyHq5Z30ZhI/exec',
@@ -291,18 +305,11 @@ const CONFIG = {
   SESSION_DIAS: 7
 };
 
-const messagesEl = document.getElementById('messages');
-const inputBar = document.getElementById('inputBar');
-const numInput = document.getElementById('numInput');
-const sendBtn = document.getElementById('sendBtn');
+const screenLogin = document.getElementById('screenLogin');
 const screenHome = document.getElementById('screenHome');
 const screenChat = document.getElementById('screenChat');
 const menuOverlay = document.getElementById('menuOverlay');
 const toastEl = document.getElementById('toast');
-
-let state = null;
-let ctx = {};
-let pinNuevoTemp = null;
 
 // =============================================================================
 // Toast
@@ -314,73 +321,6 @@ function mostrarToast(msg, ms=2600){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toastEl.classList.remove('show'), ms);
 }
-
-// =============================================================================
-// Navegación Home <-> Chat
-// =============================================================================
-
-function irAHome(){
-  menuOverlay.classList.add('hidden');
-  screenChat.classList.add('hidden');
-  screenHome.classList.remove('hidden');
-}
-
-function irAChat(){
-  screenHome.classList.add('hidden');
-  screenChat.classList.remove('hidden');
-  messagesEl.innerHTML = '';
-  startFlow();
-}
-
-document.getElementById('itemCA').addEventListener('click', irAChat);
-document.getElementById('itemRE').addEventListener('click', () => {
-  mostrarToast('Asistente de reportes — Próximamente 🚧');
-});
-document.getElementById('btnVolver').addEventListener('click', irAHome);
-
-// =============================================================================
-// Menú de 3 puntitos
-// =============================================================================
-
-document.getElementById('btnMenu').addEventListener('click', () => {
-  renderMenuUsuario();
-  menuOverlay.classList.remove('hidden');
-});
-menuOverlay.addEventListener('click', (e) => {
-  if(e.target === menuOverlay) menuOverlay.classList.add('hidden');
-});
-
-function renderMenuUsuario(){
-  const session = getSession();
-  const cont = document.getElementById('menuDatosUsuario');
-  const btnCerrar = document.getElementById('btnCerrarSesion');
-  if(session){
-    cont.innerHTML = `
-      <div class="u-nombre">${session.nombre}</div>
-      <div class="u-dato">${session.email}</div>
-      <div class="u-dato">${session.puesto || ''}${session.puesto ? ' · ' : ''}${session.obra || ''}</div>
-    `;
-    btnCerrar.classList.remove('hidden');
-  }else{
-    cont.innerHTML = `
-      <div class="u-nombre">Sin identificar</div>
-      <div class="u-dato">Todavía no iniciaste sesión en ningún asistente.</div>
-    `;
-    btnCerrar.classList.add('hidden');
-  }
-}
-
-document.getElementById('btnCerrarSesion').addEventListener('click', () => {
-  localStorage.removeItem(CONFIG.SESSION_KEY);
-  menuOverlay.classList.add('hidden');
-  mostrarToast('Sesión cerrada');
-  irAHome();
-});
-
-document.getElementById('btnActualizar').addEventListener('click', () => {
-  menuOverlay.classList.add('hidden');
-  location.reload();
-});
 
 // =============================================================================
 // Llamadas al backend
@@ -421,19 +361,12 @@ function getSession(){
   }
 }
 
-function saveSession(){
-  localStorage.setItem(CONFIG.SESSION_KEY, JSON.stringify({
-    email: ctx.email,
-    nombre: ctx.nombre,
-    obra: ctx.obra,
-    cuadrilla: ctx.cuadrilla,
-    puesto: ctx.puesto || '',
-    ts: Date.now()
-  }));
+function saveSession(datos){
+  localStorage.setItem(CONFIG.SESSION_KEY, JSON.stringify(Object.assign({ ts: Date.now() }, datos)));
 }
 
 // =============================================================================
-// UI helpers (chat)
+// "Superficie" de chat reutilizable (Login y Chat de tareas usan cada uno la suya)
 // =============================================================================
 
 function now(){
@@ -441,272 +374,410 @@ function now(){
   return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
 }
 
-function scrollBottom(){
-  requestAnimationFrame(() => {
+function makeSurface(elMessages, elInputBar, elNumInput, elSendBtn){
+
+  function scrollBottom(){
     requestAnimationFrame(() => {
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      requestAnimationFrame(() => {
+        elMessages.scrollTop = elMessages.scrollHeight;
+      });
     });
-  });
+  }
+  // El teclado virtual tarda en terminar su animación; visualViewport.resize
+  // se dispara cuando el layout realmente cambió (no al arrancar la animación).
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', scrollBottom);
+  }
+
+  function addBotBubble(text, {error=false}={}){
+    const row = document.createElement('div');
+    row.className = 'msg-row bot';
+    const bub = document.createElement('div');
+    bub.className = 'bubble' + (error ? ' error' : '');
+    bub.innerHTML = `<div class="txt"></div><div class="meta">${now()}</div>`;
+    bub.querySelector('.txt').textContent = text;
+    row.appendChild(bub);
+    elMessages.appendChild(row);
+    scrollBottom();
+    return bub;
+  }
+
+  function addUserBubble(text){
+    const row = document.createElement('div');
+    row.className = 'msg-row user';
+    const bub = document.createElement('div');
+    bub.className = 'bubble';
+    bub.innerHTML = `<div class="txt"></div><div class="meta">${now()} <span class="check">✓✓</span></div>`;
+    bub.querySelector('.txt').textContent = text;
+    row.appendChild(bub);
+    elMessages.appendChild(row);
+    scrollBottom();
+  }
+
+  function showTyping(cb, delay=450){
+    const row = document.createElement('div');
+    row.className = 'msg-row bot';
+    row.innerHTML = `<div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+    elMessages.appendChild(row);
+    scrollBottom();
+    setTimeout(() => {
+      row.remove();
+      cb();
+    }, delay);
+  }
+
+  function addQuickReplies(options){
+    const wrap = document.createElement('div');
+    wrap.className = 'qr-wrap';
+    options.forEach(opt => {
+      const btn = document.createElement('div');
+      btn.className = 'qr-btn';
+      btn.innerHTML = opt.sub
+        ? `${opt.label}<span class="sub">${opt.sub}</span>`
+        : opt.label;
+      btn.addEventListener('click', () => opt.onClick());
+      wrap.appendChild(btn);
+    });
+    elMessages.appendChild(wrap);
+    scrollBottom();
+  }
+
+  function setInputMode(active, placeholder='', {pin=false}={}){
+    if(active){
+      elInputBar.classList.remove('hidden');
+      elNumInput.value = '';
+      elNumInput.placeholder = placeholder;
+      elNumInput.type = pin ? 'password' : 'text';
+      elNumInput.classList.toggle('pin-field', pin);
+      elSendBtn.removeAttribute('disabled');
+      setTimeout(() => elNumInput.focus(), 50);
+    } else {
+      elInputBar.classList.add('hidden');
+    }
+  }
+
+  return {
+    addBotBubble, addUserBubble, showTyping, addQuickReplies,
+    setInputMode, scrollBottom,
+    elMessages, elInputBar, elNumInput, elSendBtn
+  };
 }
 
-// El teclado virtual tarda en terminar su animación; visualViewport.resize
-// se dispara cuando el layout realmente cambió (no al arrancar la animación).
-if(window.visualViewport){
-  window.visualViewport.addEventListener('resize', scrollBottom);
+const loginSurface = makeSurface(
+  document.getElementById('messagesLogin'),
+  document.getElementById('inputBarLogin'),
+  document.getElementById('numInputLogin'),
+  document.getElementById('sendBtnLogin')
+);
+
+const chatSurface = makeSurface(
+  document.getElementById('messages'),
+  document.getElementById('inputBar'),
+  document.getElementById('numInput'),
+  document.getElementById('sendBtn')
+);
+
+// =============================================================================
+// Navegación entre pantallas
+// =============================================================================
+
+function mostrarLogin(){
+  menuOverlay.classList.add('hidden');
+  screenHome.classList.add('hidden');
+  screenChat.classList.add('hidden');
+  screenLogin.classList.remove('hidden');
 }
 
-function addBotBubble(text, {error=false}={}){
-  const row = document.createElement('div');
-  row.className = 'msg-row bot';
-  const bub = document.createElement('div');
-  bub.className = 'bubble' + (error ? ' error' : '');
-  bub.innerHTML = `<div class="txt"></div><div class="meta">${now()}</div>`;
-  bub.querySelector('.txt').textContent = text;
-  row.appendChild(bub);
-  messagesEl.appendChild(row);
-  scrollBottom();
-  return bub;
+function mostrarHome(){
+  menuOverlay.classList.add('hidden');
+  screenLogin.classList.add('hidden');
+  screenChat.classList.add('hidden');
+  screenHome.classList.remove('hidden');
 }
 
-function addUserBubble(text){
-  const row = document.createElement('div');
-  row.className = 'msg-row user';
-  const bub = document.createElement('div');
-  bub.className = 'bubble';
-  bub.innerHTML = `<div class="txt"></div><div class="meta">${now()} <span class="check">✓✓</span></div>`;
-  bub.querySelector('.txt').textContent = text;
-  row.appendChild(bub);
-  messagesEl.appendChild(row);
-  scrollBottom();
+function abrirChatCA(){
+  const session = getSession();
+  if(!session){
+    // defensivo: no debería pasar si Home solo se ve con sesión activa
+    mostrarLogin();
+    runLoginFlow();
+    return;
+  }
+  chatCtx = Object.assign({}, session);
+  screenHome.classList.add('hidden');
+  screenChat.classList.remove('hidden');
+  entrarChatFlow();
 }
 
-function showTyping(cb, delay=450){
-  const row = document.createElement('div');
-  row.className = 'msg-row bot';
-  row.innerHTML = `<div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
-  messagesEl.appendChild(row);
-  scrollBottom();
-  setTimeout(() => {
-    row.remove();
-    cb();
-  }, delay);
-}
+document.getElementById('itemCA').addEventListener('click', abrirChatCA);
+document.getElementById('itemRE').addEventListener('click', () => {
+  mostrarToast('Asistente de reportes — Próximamente 🚧');
+});
+document.getElementById('btnVolver').addEventListener('click', mostrarHome);
 
-function addQuickReplies(options){
-  const wrap = document.createElement('div');
-  wrap.className = 'qr-wrap';
-  options.forEach(opt => {
-    const btn = document.createElement('div');
-    btn.className = 'qr-btn';
-    btn.innerHTML = opt.sub
-      ? `${opt.label}<span class="sub">${opt.sub}</span>`
-      : opt.label;
-    btn.addEventListener('click', () => opt.onClick());
-    wrap.appendChild(btn);
-  });
-  messagesEl.appendChild(wrap);
-  scrollBottom();
-}
+// =============================================================================
+// Menú de 3 puntitos
+// =============================================================================
 
-function setInputMode(active, placeholder='', {pin=false}={}){
-  if(active){
-    inputBar.classList.remove('hidden');
-    numInput.value = '';
-    numInput.placeholder = placeholder;
-    numInput.type = pin ? 'password' : 'text';
-    numInput.classList.toggle('pin-field', pin);
-    sendBtn.removeAttribute('disabled');
-    setTimeout(() => numInput.focus(), 50);
-  } else {
-    inputBar.classList.add('hidden');
+document.getElementById('btnMenu').addEventListener('click', () => {
+  renderMenuUsuario();
+  menuOverlay.classList.remove('hidden');
+});
+menuOverlay.addEventListener('click', (e) => {
+  if(e.target === menuOverlay) menuOverlay.classList.add('hidden');
+});
+
+function renderMenuUsuario(){
+  const session = getSession();
+  const cont = document.getElementById('menuDatosUsuario');
+  const btnCerrar = document.getElementById('btnCerrarSesion');
+  if(session){
+    cont.innerHTML = `
+      <div class="u-nombre">${session.nombre}</div>
+      <div class="u-dato">${session.email}</div>
+      <div class="u-dato">${session.puesto || ''}${session.puesto ? ' · ' : ''}${session.obra || ''}</div>
+    `;
+    btnCerrar.classList.remove('hidden');
+  }else{
+    cont.innerHTML = `
+      <div class="u-nombre">Sin identificar</div>
+      <div class="u-dato">Todavía no iniciaste sesión.</div>
+    `;
+    btnCerrar.classList.add('hidden');
   }
 }
 
+document.getElementById('btnCerrarSesion').addEventListener('click', () => {
+  localStorage.removeItem(CONFIG.SESSION_KEY);
+  menuOverlay.classList.add('hidden');
+  // Reset total: nueva identificación, nuevo saludo la próxima vez que se entre al chat.
+  loginSurface.elMessages.innerHTML = '';
+  chatSurface.elMessages.innerHTML = '';
+  yaSaludoEnChat = false;
+  mostrarToast('Sesión cerrada');
+  mostrarLogin();
+  runLoginFlow();
+});
+
+document.getElementById('btnActualizar').addEventListener('click', () => {
+  menuOverlay.classList.add('hidden');
+  location.reload();
+});
+
 // =============================================================================
-// Flujo — arranque / login
+// Login — identificación (nombre + PIN), pantalla propia, antes de Home
 // =============================================================================
 
-async function startFlow(){
-  ctx = {};
+let loginState = null;
+let loginCtx = {};
+let pinNuevoTemp = null;
+
+async function runLoginFlow(){
+  loginCtx = {};
   pinNuevoTemp = null;
-  setInputMode(false);
+  loginState = null;
+  loginSurface.setInputMode(false);
 
   const saludoRes = await apiCall('obtenerSaludo');
   const saludo = (saludoRes && saludoRes.ok) ? saludoRes.saludo : 'Hola.';
 
-  const session = getSession();
-  if(session){
-    ctx.email = session.email;
-    ctx.nombre = session.nombre;
-    ctx.obra = session.obra;
-    ctx.cuadrilla = session.cuadrilla;
-    ctx.puesto = session.puesto;
-    showTyping(() => {
-      addBotBubble(`${saludo} ${session.nombre.split(' ')[0]} 👋`);
-      loadTareasYPreguntar();
-    }, 300);
-    return;
-  }
-
-  showTyping(async () => {
-    addBotBubble(`${saludo} ¿Quién sos?`);
+  loginSurface.showTyping(async () => {
+    loginSurface.addBotBubble(`${saludo} ¿Quién sos?`);
     const res = await apiCall('listarUsuariosActivos');
     if(!res.ok){
-      addBotBubble('No pude conectar con el Sheet. Reintentá en un momento.', {error:true});
+      loginSurface.addBotBubble('No pude conectar con el Sheet. Reintentá en un momento.', {error:true});
       return;
     }
     if(!res.usuarios.length){
-      addBotBubble('No encontré usuarios activos configurados.', {error:true});
+      loginSurface.addBotBubble('No encontré usuarios activos configurados.', {error:true});
       return;
     }
-    addQuickReplies(res.usuarios.map(u => ({
+    loginSurface.addQuickReplies(res.usuarios.map(u => ({
       label: u.nombre,
-      onClick: () => selectUsuario(u)
+      onClick: () => selectUsuarioLogin(u)
     })));
   }, 300);
 }
 
-function selectUsuario(u){
-  addUserBubble(u.nombre);
-  ctx.email = u.email;
-  ctx.nombreTemp = u.nombre;
-  state = 'ask_pin';
-  showTyping(() => {
-    addBotBubble(`Ingresá tu PIN, ${u.nombre.split(' ')[0]}`);
-    setInputMode(true, 'PIN', {pin:true});
+function selectUsuarioLogin(u){
+  loginSurface.addUserBubble(u.nombre);
+  loginCtx.email = u.email;
+  loginState = 'ask_pin';
+  loginSurface.showTyping(() => {
+    loginSurface.addBotBubble(`Ingresá tu PIN, ${u.nombre.split(' ')[0]}`);
+    loginSurface.setInputMode(true, 'PIN', {pin:true});
   });
 }
 
-async function handlePin(raw){
-  addUserBubble(raw ? '•'.repeat(raw.length) : '(vacío)');
-  setInputMode(false);
+async function handlePinLogin(raw){
+  loginSurface.addUserBubble(raw ? '•'.repeat(raw.length) : '(vacío)');
+  loginSurface.setInputMode(false);
 
   if(raw.trim() === ''){
-    showTyping(() => {
-      addBotBubble('Ingresá tu PIN para continuar.', {error:true});
-      setInputMode(true, 'PIN', {pin:true});
+    loginSurface.showTyping(() => {
+      loginSurface.addBotBubble('Ingresá tu PIN para continuar.', {error:true});
+      loginSurface.setInputMode(true, 'PIN', {pin:true});
     }, 300);
     return;
   }
 
-  showTyping(async () => {
-    const res = await apiCall('validarPIN', { email: ctx.email, pin: raw });
+  loginSurface.showTyping(async () => {
+    const res = await apiCall('validarPIN', { email: loginCtx.email, pin: raw });
 
     if(!res || res.ok === undefined){
-      addBotBubble('Hubo un problema de conexión. Reintentá el PIN.', {error:true});
-      setInputMode(true, 'PIN', {pin:true});
+      loginSurface.addBotBubble('Hubo un problema de conexión. Reintentá el PIN.', {error:true});
+      loginSurface.setInputMode(true, 'PIN', {pin:true});
       return;
     }
 
     if(res.ok){
-      ctx.nombre = res.nombre;
-      ctx.obra = res.obra;
-      ctx.cuadrilla = res.cuadrilla;
-      ctx.puesto = res.puesto;
+      loginCtx.nombre = res.nombre;
+      loginCtx.obra = res.obra;
+      loginCtx.cuadrilla = res.cuadrilla;
+      loginCtx.puesto = res.puesto;
 
       if(res.requiereCambio){
-        state = 'ask_pin_nuevo';
-        addBotBubble(`Es tu primer ingreso. Creá tu PIN propio.`);
-        setInputMode(true, 'Nuevo PIN', {pin:true});
+        loginState = 'ask_pin_nuevo';
+        loginSurface.addBotBubble('Es tu primer ingreso. Creá tu PIN propio.');
+        loginSurface.setInputMode(true, 'Nuevo PIN', {pin:true});
       }else{
-        saveSession();
-        loadTareasYPreguntar();
+        completarLogin();
       }
       return;
     }
 
     if(res.motivo === 'inactivo'){
-      addBotBubble('Tu usuario está dado de baja. Consultá con tu supervisor.', {error:true});
-      setTimeout(irAHome, 1800);
+      loginSurface.addBotBubble('Tu usuario está dado de baja. Consultá con tu supervisor.', {error:true});
+      setTimeout(runLoginFlow, 1800);
     }else if(res.motivo === 'bloqueado'){
-      addBotBubble('Tu acceso está bloqueado por intentos fallidos. Consultá con tu supervisor.', {error:true});
-      setTimeout(irAHome, 1800);
+      loginSurface.addBotBubble('Tu acceso está bloqueado por intentos fallidos. Consultá con tu supervisor.', {error:true});
+      setTimeout(runLoginFlow, 1800);
     }else if(res.motivo === 'bloqueado_ahora'){
-      addBotBubble('PIN incorrecto. Se alcanzó el límite de intentos — tu acceso quedó bloqueado. Consultá con tu supervisor.', {error:true});
-      setTimeout(irAHome, 2200);
+      loginSurface.addBotBubble('PIN incorrecto. Se alcanzó el límite de intentos — tu acceso quedó bloqueado. Consultá con tu supervisor.', {error:true});
+      setTimeout(runLoginFlow, 2200);
     }else if(res.motivo === 'no_encontrado'){
-      addBotBubble('No encontré tu usuario. Reintentá desde el principio.', {error:true});
-      setTimeout(irAHome, 1800);
+      loginSurface.addBotBubble('No encontré tu usuario. Reintentá desde el principio.', {error:true});
+      setTimeout(runLoginFlow, 1800);
     }else{
-      // pin_incorrecto (o motivo desconocido: siempre mostramos un mensaje claro)
       const restantesTxt = (typeof res.restantes === 'number')
         ? `Te quedan ${res.restantes} intento(s).`
         : 'Reintentá.';
-      addBotBubble(`PIN incorrecto. ${restantesTxt}`, {error:true});
-      setInputMode(true, 'PIN', {pin:true});
+      loginSurface.addBotBubble(`PIN incorrecto. ${restantesTxt}`, {error:true});
+      loginSurface.setInputMode(true, 'PIN', {pin:true});
     }
   }, 350);
 }
 
-async function handlePinNuevo(raw){
-  addUserBubble(raw ? '•'.repeat(raw.length) : '(vacío)');
-  setInputMode(false);
+async function handlePinNuevoLogin(raw){
+  loginSurface.addUserBubble(raw ? '•'.repeat(raw.length) : '(vacío)');
+  loginSurface.setInputMode(false);
 
   if(raw.trim() === '' || raw.trim().length < 4){
-    showTyping(() => {
-      addBotBubble('El PIN debe tener al menos 4 dígitos.', {error:true});
-      setInputMode(true, 'Nuevo PIN', {pin:true});
+    loginSurface.showTyping(() => {
+      loginSurface.addBotBubble('El PIN debe tener al menos 4 dígitos.', {error:true});
+      loginSurface.setInputMode(true, 'Nuevo PIN', {pin:true});
     }, 300);
     return;
   }
 
   pinNuevoTemp = raw.trim();
-  state = 'ask_pin_nuevo_confirm';
-  showTyping(() => {
-    addBotBubble('Repetí el mismo PIN para confirmar.');
-    setInputMode(true, 'Confirmá tu PIN', {pin:true});
+  loginState = 'ask_pin_nuevo_confirm';
+  loginSurface.showTyping(() => {
+    loginSurface.addBotBubble('Repetí el mismo PIN para confirmar.');
+    loginSurface.setInputMode(true, 'Confirmá tu PIN', {pin:true});
   }, 300);
 }
 
-async function handlePinNuevoConfirm(raw){
-  addUserBubble(raw ? '•'.repeat(raw.length) : '(vacío)');
-  setInputMode(false);
+async function handlePinNuevoConfirmLogin(raw){
+  loginSurface.addUserBubble(raw ? '•'.repeat(raw.length) : '(vacío)');
+  loginSurface.setInputMode(false);
 
   if(raw.trim() !== pinNuevoTemp){
     pinNuevoTemp = null;
-    state = 'ask_pin_nuevo';
-    showTyping(() => {
-      addBotBubble('No coincide con el anterior. Empecemos de nuevo con el PIN.', {error:true});
-      setInputMode(true, 'Nuevo PIN', {pin:true});
+    loginState = 'ask_pin_nuevo';
+    loginSurface.showTyping(() => {
+      loginSurface.addBotBubble('No coincide con el anterior. Empecemos de nuevo con el PIN.', {error:true});
+      loginSurface.setInputMode(true, 'Nuevo PIN', {pin:true});
     }, 350);
     return;
   }
 
-  showTyping(async () => {
-    const res = await apiCall('crearPINPropio', { email: ctx.email, pinNuevo: pinNuevoTemp });
+  loginSurface.showTyping(async () => {
+    const res = await apiCall('crearPINPropio', { email: loginCtx.email, pinNuevo: pinNuevoTemp });
     pinNuevoTemp = null;
 
     if(!res.ok){
-      addBotBubble('No pude guardar tu PIN. Reintentá desde el principio.', {error:true});
-      setTimeout(irAHome, 1800);
+      loginSurface.addBotBubble('No pude guardar tu PIN. Reintentá desde el principio.', {error:true});
+      setTimeout(runLoginFlow, 1800);
       return;
     }
 
-    addBotBubble('Listo, PIN creado ✅');
-    saveSession();
-    loadTareasYPreguntar();
+    loginSurface.addBotBubble('Listo, PIN creado ✅');
+    completarLogin();
   }, 350);
 }
 
+function completarLogin(){
+  saveSession({
+    email: loginCtx.email,
+    nombre: loginCtx.nombre,
+    obra: loginCtx.obra,
+    cuadrilla: loginCtx.cuadrilla,
+    puesto: loginCtx.puesto
+  });
+  setTimeout(mostrarHome, 600);
+}
+
+document.getElementById('sendBtnLogin').addEventListener('click', () => {
+  const val = document.getElementById('numInputLogin').value;
+  document.getElementById('numInputLogin').value = '';
+  if(loginState === 'ask_pin') handlePinLogin(val);
+  else if(loginState === 'ask_pin_nuevo') handlePinNuevoLogin(val);
+  else if(loginState === 'ask_pin_nuevo_confirm') handlePinNuevoConfirmLogin(val);
+});
+document.getElementById('numInputLogin').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') document.getElementById('sendBtnLogin').click();
+});
+
 // =============================================================================
-// Flujo — tareas (lectura real desde Sheet)
+// Chat de carga de avance — ya identificado (sesión existente)
 // =============================================================================
+
+let chatState = null;
+let chatCtx = {};
+let yaSaludoEnChat = false; // el saludo con nombre aparece una sola vez por apertura de la app
+
+async function entrarChatFlow(){
+  chatSurface.setInputMode(false);
+
+  if(!yaSaludoEnChat){
+    const saludoRes = await apiCall('obtenerSaludo');
+    const saludo = (saludoRes && saludoRes.ok) ? saludoRes.saludo : 'Hola.';
+    yaSaludoEnChat = true;
+    chatSurface.showTyping(() => {
+      chatSurface.addBotBubble(`${saludo} ${chatCtx.nombre.split(' ')[0]} 👋`);
+      loadTareasYPreguntar();
+    }, 300);
+  }else{
+    loadTareasYPreguntar();
+  }
+}
 
 function loadTareasYPreguntar(){
-  showTyping(async () => {
-    const res = await apiCall('obtenerTareas', { email: ctx.email });
+  chatSurface.showTyping(async () => {
+    const res = await apiCall('obtenerTareas', { email: chatCtx.email });
 
     if(!res.ok){
-      addBotBubble('No pude cargar tus tareas. Reintentá en un momento.', {error:true});
+      chatSurface.addBotBubble('No pude cargar tus tareas. Reintentá en un momento.', {error:true});
       return;
     }
     if(!res.tareas.length){
-      addBotBubble('No encontré tareas asignadas para vos en el Sheet.', {error:true});
+      chatSurface.addBotBubble('No encontré tareas asignadas para vos en el Sheet.', {error:true});
       return;
     }
 
-    addBotBubble('Dale. ¿Qué actividad cargás?');
-    addQuickReplies(res.tareas.map(it => ({
+    chatSurface.addBotBubble('Dale. ¿Qué actividad cargás?');
+    chatSurface.addQuickReplies(res.tareas.map(it => ({
       label: it.nombre,
       sub: `IWP ${it.iwp} · ${it.tipo}`,
       onClick: () => selectIWP(it)
@@ -715,57 +786,53 @@ function loadTareasYPreguntar(){
 }
 
 function selectIWP(item){
-  addUserBubble(`IWP ${item.iwp} — ${item.nombre}`);
-  ctx.iwp = item;
-  state = 'ask_cantidad';
-  showTyping(() => {
-    addBotBubble('¿Cantidad de trabajo realizado?');
-    setInputMode(true, 'Ej: 40');
+  chatSurface.addUserBubble(`IWP ${item.iwp} — ${item.nombre}`);
+  chatCtx.iwp = item;
+  chatState = 'ask_cantidad';
+  chatSurface.showTyping(() => {
+    chatSurface.addBotBubble('¿Cantidad de trabajo realizado?');
+    chatSurface.setInputMode(true, 'Ej: 40');
   });
 }
-
-// =============================================================================
-// Flujo — cantidad / personas / resumen
-// =============================================================================
 
 function handleCantidad(raw){
   const n = Number(raw);
   if(raw.trim() === '' || isNaN(n) || n <= 0){
-    addUserBubble(raw || '(vacío)');
-    setInputMode(false);
-    showTyping(() => {
-      addBotBubble('Ese valor no es válido. Ingresá un número mayor a cero.', {error:true});
-      setInputMode(true, 'Ej: 40');
+    chatSurface.addUserBubble(raw || '(vacío)');
+    chatSurface.setInputMode(false);
+    chatSurface.showTyping(() => {
+      chatSurface.addBotBubble('Ese valor no es válido. Ingresá un número mayor a cero.', {error:true});
+      chatSurface.setInputMode(true, 'Ej: 40');
     }, 350);
     return;
   }
-  addUserBubble(raw);
-  ctx.cantidad = n;
-  state = 'ask_personas';
-  setInputMode(false);
-  showTyping(() => {
-    addBotBubble('¿Cantidad de personas en la cuadrilla?');
-    setInputMode(true, 'Ej: 3');
+  chatSurface.addUserBubble(raw);
+  chatCtx.cantidad = n;
+  chatState = 'ask_personas';
+  chatSurface.setInputMode(false);
+  chatSurface.showTyping(() => {
+    chatSurface.addBotBubble('¿Cantidad de personas en la cuadrilla?');
+    chatSurface.setInputMode(true, 'Ej: 3');
   });
 }
 
 function handlePersonas(raw){
   const n = Number(raw);
   if(raw.trim() === '' || isNaN(n) || n <= 0){
-    addUserBubble(raw || '(vacío)');
-    setInputMode(false);
-    showTyping(() => {
-      addBotBubble('Ese valor no es válido. Ingresá un número mayor a cero.', {error:true});
-      setInputMode(true, 'Ej: 3');
+    chatSurface.addUserBubble(raw || '(vacío)');
+    chatSurface.setInputMode(false);
+    chatSurface.showTyping(() => {
+      chatSurface.addBotBubble('Ese valor no es válido. Ingresá un número mayor a cero.', {error:true});
+      chatSurface.setInputMode(true, 'Ej: 3');
     }, 350);
     return;
   }
-  addUserBubble(raw);
-  ctx.personas = n;
+  chatSurface.addUserBubble(raw);
+  chatCtx.personas = n;
   const hh = n * 8;
-  state = 'confirm';
-  setInputMode(false);
-  showTyping(() => showResumen(hh));
+  chatState = 'confirm';
+  chatSurface.setInputMode(false);
+  chatSurface.showTyping(() => showResumen(hh));
 }
 
 function showResumen(hh){
@@ -777,11 +844,11 @@ function showResumen(hh){
   bub.innerHTML = `
     <div class="txt">Este es el resumen:</div>
     <div class="resumen-box">
-      <div class="row"><span>Capataz</span><b>${ctx.nombre}</b></div>
-      <div class="row"><span>Obra</span><b>${ctx.obra}</b></div>
-      <div class="row"><span>IWP</span><b>${ctx.iwp.iwp} — ${ctx.iwp.nombre}</b></div>
-      <div class="row"><span>Cantidad</span><b>${ctx.cantidad}</b></div>
-      <div class="row"><span>Personas</span><b>${ctx.personas}</b></div>
+      <div class="row"><span>Capataz</span><b>${chatCtx.nombre}</b></div>
+      <div class="row"><span>Obra</span><b>${chatCtx.obra}</b></div>
+      <div class="row"><span>IWP</span><b>${chatCtx.iwp.iwp} — ${chatCtx.iwp.nombre}</b></div>
+      <div class="row"><span>Cantidad</span><b>${chatCtx.cantidad}</b></div>
+      <div class="row"><span>Personas</span><b>${chatCtx.personas}</b></div>
       <div class="row"><span>HH (personas × 8)</span><b>${hh}</b></div>
       <div class="resumen-actions">
         <button class="btn-nuevo">Nuevo</button>
@@ -793,46 +860,39 @@ function showResumen(hh){
   bub.querySelector('.btn-enviar').addEventListener('click', () => confirmarEnvio(hh));
   bub.querySelector('.btn-nuevo').addEventListener('click', () => cancelarYNuevo());
   row.appendChild(bub);
-  messagesEl.appendChild(row);
-  scrollBottom();
+  chatSurface.elMessages.appendChild(row);
+  chatSurface.scrollBottom();
 }
 
 function confirmarEnvio(hh){
-  addUserBubble('Enviar ✔');
-  showTyping(() => {
+  chatSurface.addUserBubble('Enviar ✔');
+  chatSurface.showTyping(() => {
     // Todavía no guarda en el Sheet real — eso es la próxima etapa (hoja Cargas_Avance).
-    addBotBubble(`✅ Carga registrada localmente — IWP ${ctx.iwp.iwp}, Cant. ${ctx.cantidad}, HH ${hh}.\n(El guardado real en el Sheet queda para la próxima etapa.)`);
-    setTimeout(() => { messagesEl.innerHTML=''; startFlow(); }, 1800);
+    chatSurface.addBotBubble(`✅ Carga registrada localmente — IWP ${chatCtx.iwp.iwp}, Cant. ${chatCtx.cantidad}, HH ${hh}.\n(El guardado real en el Sheet queda para la próxima etapa.)`);
+    setTimeout(() => { chatState = null; loadTareasYPreguntar(); }, 1200);
   }, 350);
 }
 
 function cancelarYNuevo(){
-  addUserBubble('Nuevo');
-  showTyping(() => {
-    addBotBubble('Sin problema, empecemos de nuevo.');
-    setTimeout(() => { messagesEl.innerHTML=''; startFlow(); }, 900);
+  chatSurface.addUserBubble('Nuevo');
+  chatSurface.showTyping(() => {
+    chatSurface.addBotBubble('Sin problema, empecemos de nuevo.');
+    setTimeout(() => { chatState = null; loadTareasYPreguntar(); }, 700);
   }, 300);
 }
 
-// =============================================================================
-// Input bar — router según state
-// =============================================================================
-
-sendBtn.addEventListener('click', () => {
-  const val = numInput.value;
-  numInput.value = '';
-  if(state === 'ask_pin') handlePin(val);
-  else if(state === 'ask_pin_nuevo') handlePinNuevo(val);
-  else if(state === 'ask_pin_nuevo_confirm') handlePinNuevoConfirm(val);
-  else if(state === 'ask_cantidad') handleCantidad(val);
-  else if(state === 'ask_personas') handlePersonas(val);
+document.getElementById('sendBtn').addEventListener('click', () => {
+  const val = document.getElementById('numInput').value;
+  document.getElementById('numInput').value = '';
+  if(chatState === 'ask_cantidad') handleCantidad(val);
+  else if(chatState === 'ask_personas') handlePersonas(val);
 });
-numInput.addEventListener('keydown', (e) => {
-  if(e.key === 'Enter') sendBtn.click();
+document.getElementById('numInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') document.getElementById('sendBtn').click();
 });
 
 // =============================================================================
-// PWA — Service Worker + Instalación (mismo patrón que Mesa de Trabajo)
+// PWA — Service Worker + Instalación
 // =============================================================================
 
 let deferredInstallPrompt = null;
@@ -868,8 +928,19 @@ document.getElementById('btnInstalar').addEventListener('click', () => {
   });
 });
 
-// Arranque: siempre en Home
-irAHome();
+// =============================================================================
+// Arranque de la app
+// =============================================================================
+
+(function arrancar(){
+  const session = getSession();
+  if(session){
+    mostrarHome();
+  }else{
+    mostrarLogin();
+    runLoginFlow();
+  }
+})();
 </script>
 </body>
 </html>

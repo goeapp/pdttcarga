@@ -1,7 +1,7 @@
 // sw.js — P-Chat PWA
-// Cache: pchat-v1.1
+// Cache: pchat-v1.2
 
-const CACHE_NAME = 'pchat-v1.1';
+const CACHE_NAME = 'pchat-v1.2';
 const ASSETS = [
   './',
   './index.html',

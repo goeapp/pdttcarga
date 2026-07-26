@@ -96,7 +96,7 @@
   /* ---------- Menú de 3 puntitos (tarjeta) ---------- */
   .menu-overlay{
     position:absolute; inset:0; background:rgba(0,0,0,.35);
-    display:flex; justify-content:flex-end; z-index:20;
+    display:flex; justify-content:flex-end; align-items:flex-start; z-index:20;
   }
   .menu-overlay.hidden{ display:none; }
   .menu-card{
@@ -250,7 +250,7 @@
         <div class="name">P-Chat · PdTT</div>
         <div class="status">carga de avance</div>
       </div>
-      <div class="version-pill">v1.1</div>
+      <div class="version-pill">v1.2</div>
     </div>
 
     <div class="messages" id="messages"></div>
@@ -271,10 +271,10 @@
         <div class="u-dato">Todavía no iniciaste sesión en ningún asistente.</div>
       </div>
       <hr>
-      <div class="m-version">Versión v1.1</div>
-      <button class="menu-btn" id="btnInstalar">⬇️ Instalar app</button>
-      <button class="menu-btn" id="btnActualizar">🔄 Actualizar</button>
-      <button class="menu-btn danger hidden" id="btnCerrarSesion">🚪 Cerrar sesión</button>
+      <div class="m-version">Versión v1.2</div>
+      <button class="menu-btn" id="btnInstalar">Instalar app</button>
+      <button class="menu-btn" id="btnActualizar">Actualizar</button>
+      <button class="menu-btn danger hidden" id="btnCerrarSesion">Cerrar sesión</button>
     </div>
   </div>
 
@@ -447,6 +447,12 @@ function scrollBottom(){
       messagesEl.scrollTop = messagesEl.scrollHeight;
     });
   });
+}
+
+// El teclado virtual tarda en terminar su animación; visualViewport.resize
+// se dispara cuando el layout realmente cambió (no al arrancar la animación).
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', scrollBottom);
 }
 
 function addBotBubble(text, {error=false}={}){
